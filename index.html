@@ -60,7 +60,7 @@ for(const r of rows.slice(1)){const d=pDate(r[ci]);if(!d){skip++;continue}
 const a=(r[ai]||'').trim()||'(No Agent)';const amt=parseFloat(String(r[mi]).replace(/[^0-9.\-]/g,''))||0;
 recs.push({d,a,amt,id:bi>=0?(r[bi]||'').trim().toUpperCase():''})}
 const dates=[...new Map(recs.map(x=>[x.d.k,x.d])).values()].sort((x,y)=>x.k<y.k?-1:1);
-return{recs,dates,skip,total:rows.length-1,uq:new Set(recs.map(r=>r.id).filter(Boolean)).size}}
+return{recs,dates,skip,total:rows.length-1,uq:new Set(recs.filter(r=>r.id).map(r=>r.id+'|'+r.a)).size}}
 function agg(ds){const A={};for(const r of ds.recs){const a=A[r.a]??=(A[r.a]={});const e=a[r.d.k]??=[0,0];e[0]++;e[1]+=r.amt}return A}
 const fmt=n=>Number.isInteger(n)?n:(Math.round(n*100)/100);
 const inc=(n,o)=>o==0?null:(n-o)/o;
@@ -113,7 +113,7 @@ LAST={Ao,An,res};const ag=$('agents');ag.innerHTML='';res.forEach(r=>ag.appendCh
 const sm=$('summary');sm.innerHTML='';sm.appendChild(card('All Agent Summary',summaryTable(res)));
 $('out').classList.remove('hide')}
 function wire(fid,key,sid,bid){$(fid).onchange=async e=>{const f=e.target.files[0];if(!f)return;
-try{D[key]=load(await f.text());$(sid).textContent=`${f.name} · ${D[key].total} rows · ${D[key].uq} unique Booking Ids counted · ${D[key].dates.length} days${D[key].skip?' · '+D[key].skip+' skipped (no valid date)':''}`;$(bid).classList.add('ok');render()}
+try{D[key]=load(await f.text());$(sid).textContent=`${f.name} · ${D[key].total} rows · ${D[key].uq} bookings counted (unique Booking Id per agent) · ${D[key].dates.length} days${D[key].skip?' · '+D[key].skip+' skipped (no valid date)':''}`;$(bid).classList.add('ok');render()}
 catch(err){D[key]=null;$(bid).classList.remove('ok');$(sid).textContent='Error';$('msg').textContent=f.name+': '+err}}}
 let LAST;
 const X=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
@@ -160,7 +160,7 @@ return zip([
 {n:'xl/worksheets/sheet2.xml',d:sheetXml(S,['A1:A2','B1:C1','D1:E1'],[26,12,14,12,14,16,18])}])}
 $('dl').onclick=()=>{if(!LAST)return;const a=document.createElement('a');a.href=URL.createObjectURL(buildXlsx());a.download='Booking_Comparison.xlsx';document.body.appendChild(a);a.click();a.remove()};
 let MODE='uniq';
-function agg(ds){const A={},seen=new Set();for(const r of ds.recs){if(MODE=='uniq'&&r.id){if(seen.has(r.id))continue;seen.add(r.id)}const a=A[r.a]||(A[r.a]={});const e=a[r.d.k]||(a[r.d.k]=[0,0]);e[0]++;e[1]+=r.amt}return A}
+function agg(ds){const A={},seen=new Set();for(const r of ds.recs){if(MODE=='uniq'&&r.id){const k=r.id+'|'+r.a;if(seen.has(k))continue;seen.add(k)}const a=A[r.a]||(A[r.a]={});const e=a[r.d.k]||(a[r.d.k]=[0,0]);e[0]++;e[1]+=r.amt}return A}
 function agentTable(name,Ao,An){
 const od=D.old.dates,nd=D.nw.dates,n=Math.max(od.length,nd.length),ao=Ao[name]||{},an=An[name]||{};
 const c=v=>`<td style='${T}'>${v}</td>`;
