@@ -1,43 +1,108 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Booking Comparison – Old vs New</title>
+<title>Agent Average vs Today – Calls & Bookings</title>
 <style>
 :root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0;background:#f4f6f9;color:#1f2937;font-family:Segoe UI,Arial,sans-serif}
-.wrap{max-width:1100px;margin:0 auto;padding:16px}
-h1{font-size:20px;margin:0 0 4px}.sub{color:#6b7280;font-size:13px;margin-bottom:14px}
-.up{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.box{background:#fff;border:2px dashed #cbd5e1;border-radius:10px;padding:14px;text-align:center}
-.box b{display:block;margin-bottom:6px}.box small{display:block;color:#6b7280;margin-top:6px}
-.box.ok{border-color:#16a34a;background:#f0fdf4}
-#msg{margin:10px 0;font-size:13px;color:#b45309}
-.tabs{display:flex;gap:6px;margin:14px 0}
+.wrap{max-width:1200px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 4px}.sub{color:#6b7280;font-size:13px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:700px){.grid{grid-template-columns:1fr}}
+.pc{background:#fff;border-radius:10px;padding:12px;box-shadow:0 1px 3px #0001}
+.pc h3{margin:0 0 8px;font-size:15px}
+#pw h3{color:#1f5fa8}#pt h3{color:#c55a11}
+.fl{display:block;border:1px dashed #cbd5e1;border-radius:8px;padding:8px;margin-bottom:8px;font-size:13px}
+.fl span{font-weight:600;display:block;margin-bottom:4px}
+.fl small{display:block;color:#6b7280;margin-top:4px;word-break:break-word}
+.fl small.ok{color:#15803d}.fl small.er{color:#b91c1c}
+.opt{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:12px 0;font-size:13px}
+details{background:#fff;border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:10px}
+textarea{width:100%;height:70px;box-sizing:border-box;font-family:inherit}
+#msg{margin:8px 0;font-size:13px;color:#b45309;white-space:pre-line}
+.tabs{display:flex;gap:6px;margin:14px 0;align-items:center}
 .tab{padding:8px 16px;border:1px solid #cbd5e1;background:#fff;border-radius:8px;cursor:pointer;font-weight:600}
 .tab.on{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
+.dl{margin-left:auto;background:#1d4ed8;color:#fff;border:0;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:600}
 .card{background:#fff;border-radius:10px;padding:12px;margin-bottom:14px;box-shadow:0 1px 3px #0001}
 .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
 .hd h3{margin:0;font-size:16px}
 button.cp{background:#16a34a;color:#fff;border:0;border-radius:6px;padding:7px 14px;cursor:pointer;font-weight:600}
-.sc{overflow-x:auto}
-.hide{display:none}
-.dl{margin-left:auto;background:#1d4ed8;color:#fff;border:0;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:600}
+.sc{overflow-x:auto}.hide{display:none}
 </style></head><body><div class="wrap">
-<h1>Booking Comparison – Old vs New</h1>
-<div class="sub">CSV needs: Created At, Agent Name, Booking Id, Booking Amount. Data is processed only in your browser.</div>
-<div class="up">
-<label class="box" id="b1"><b>1. Old days CSV</b><input type="file" id="f1" accept=".csv"><small id="s1">No file</small></label>
-<label class="box" id="b2"><b>2. New days CSV</b><input type="file" id="f2" accept=".csv"><small id="s2">No file</small></label>
+<h1>Agent Average vs Today – Calls &amp; Bookings</h1>
+<div class="sub">For the last 7 days and for today, upload the Incoming Calls CSV, Outgoing Calls CSV and Booking CSV. Everything is processed only in your browser.</div>
+<div class="grid"><div class="pc" id="pw"><h3>Last 7 Days (average)</h3></div><div class="pc" id="pt"><h3>Today</h3></div></div>
+<div class="opt">
+<select id="ct" class="hide"><option value="all">all</option></select>
+<label><input type="checkbox" id="tot"> Show 7-day totals columns</label>
+<label>Department: <select id="dept"></select></label>
+<input id="bf" type="hidden" value="">
 </div>
+<details><summary>Agent name mapping (only if call names and booking names differ)</summary>
+<p>One per line: <code>call name = booking name</code> (example: <code>YDS 376 = Rahul</code>)</p>
+<textarea id="map"></textarea><button class="cp" id="ap">Apply</button></details>
 <div id="msg"></div>
 <div id="out" class="hide">
-<div class="tabs"><div class="tab on" data-t="agents">Per Agent</div><div class="tab" data-t="summary">All Agent Summary</div><button class="dl" id="dl">⬇ Download Excel</button></div>
-<div id="agents"></div>
-<div id="summary" class="hide"></div>
+<div class="tabs"><div class="tab on" data-t="sum">Summary</div><div class="tab" data-t="hrw">Day-wise Check</div><button class="dl" id="dl">⬇ Download Excel</button></div>
+<div id="sum"></div>
+<div id="hrw" class="hide"><label style="font-size:13px">Agent: <select id="hag"></select></label><div id="hr" style="margin-top:10px"></div></div>
 </div></div>
 <script>
 const $=id=>document.getElementById(id);
-let D={old:null,nw:null};
+const r2=n=>Math.round(n*100)/100,inc=(n,o)=>o==0?null:(n-o)/o;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const norm=s=>String(s||'').replace(/\s*extension.*$/i,'').replace(/[\s\-–—]+$/,'').replace(/\s+/g,' ').trim();
+const nz=s=>String(s||'').toLowerCase().replace(/[\s\-_]+/g,'');
+/* ===== EDIT THIS: department lists. Write agent names as they look after cleaning, e.g. 'YDS 395' ===== */
+const DEPARTMENTS={
+  Sales:[ /* 'YDS 395','YDS 396' */ ],
+  Other:[ /* 'YDS 397','YDS 398' */ ]
+};
+const DMAP={};for(const d in DEPARTMENTS)DEPARTMENTS[d].forEach(n=>{DMAP[norm(n).toLowerCase()]=d});
+/* ===== EDIT THIS: one entry per person, so calls + bookings show in ONE row =====
+   calls   = names used in the Incoming / Outgoing call CSVs (e.g. 'YDS 395')
+   booking = names used in the Booking CSV
+   dept    = department shown in the Department filter */
+
+const AGENTS = {
+'Alpesh Rathod': {calls:['YDS 342'], booking:['Alpesh Rathod'], dept:'Sales'},
+'Ayush M.': {calls:['YDS 376'], booking:['Ayush M.'], dept:'Sales'},
+'Chirag B': {calls:['YDS 344'], booking:['Chirag B'], dept:'Sales'},
+'Devanshu Bhatt': {calls:['YDB 332'], booking:['Devanshu Bhatt'], dept:'Sales'},
+'Dhara Gohil': {calls:['YDS 426'], booking:['Dhara Gohil'], dept:'Sales'},
+'Dhaval Parmar': {calls:['YDS 402'], booking:['Dhaval Parmar'], dept:'Sales'},
+'Dhruvraj Gohil': {calls:['YDS 395'], booking:['Dhruvraj Gohil'], dept:'Sales'},
+'Digvijay Zala': {calls:['YDS 346'], booking:['Digvijay Zala'], dept:'Sales'},
+'Divyen Nakum': {calls:['YDB 370'], booking:['Divyen Nakum'], dept:'Sales'},
+'Fenali Parmar': {calls:['YDS 421'], booking:['Fenali Parmar'], dept:'Sales'},
+'Gopal Kalotara': {calls:['YDS 390'], booking:['Gopal Kalotara'], dept:'Sales'},
+'Harshal Mehta': {calls:['YDS 360'], booking:['Harshal Mehta'], dept:'Sales'},
+'Het Maniyar': {calls:['YDS 418'], booking:['Het Maniyar'], dept:'Sales'},
+'Keval Solanki': {calls:['YDS 340'], booking:['Keval Solanki'], dept:'Sales'},
+'Kiran Chudasama': {calls:['YDS 396'], booking:['Kiran Chudasama'], dept:'Sales'},
+'kiran chugadiya': {calls:['YDS 420'], booking:['kiran chugadiya'], dept:'Sales'},
+'Krish Jasoliya': {calls:['YDS 304'], booking:['Krish Jasoliya'], dept:'Sales'},
+'Krushali Raval': {calls:['YDS 428'], booking:['Krushali Raval'], dept:'Sales'},
+'Mittal Vaghela': {calls:['YDS 394'], booking:['Mittal Vaghela'], dept:'Sales'},
+'Mohitraj Jadeja': {calls:['YDS 410'], booking:['Mohitraj Jadeja'], dept:'Sales'},
+'Neha Parmar': {calls:['YDS 378'], booking:['Neha Parmar'], dept:'Sales'},
+'Nishtha Bhatt': {calls:['YDS 409'], booking:['Nishtha Bhatt'], dept:'Sales'},
+'Radhika Solanki': {calls:['YDS 401'], booking:['Radhika Solanki'], dept:'Sales'},
+'rahul pal': {calls:['YDS 337'], booking:['rahul pal'], dept:'Sales'},
+'Ravi Parmar': {calls:['YDS 315'], booking:['Ravi Parmar'], dept:'Sales'},
+'Rina Gohil': {calls:['YDS 415'], booking:['Rina Gohil'], dept:'Sales'},
+'Suryadeepsinh Jadeja': {calls:['YDS 404'], booking:['Suryadeepsinh Jadeja'], dept:'Sales'},
+'Viraj Chavda': {calls:['YDS 324'], booking:['Viraj Chavda'], dept:'Sales'},
+'Vishakha Shah': {calls:['YDS 391'], booking:['Vishakha Shah'], dept:'Sales'},
+'Vishwa Rajpura': {calls:['YDP 306'], booking:['Vishwa Rajpura'], dept:'Sales'},
+};
+	
+
+const AGENT_ALIAS={},DEPT_OF={};
+for(const[nm,a]of Object.entries(AGENTS)){const disp=norm(nm);[nm,...(a.calls||[]),...(a.booking||[])].forEach(x=>{AGENT_ALIAS[norm(x).toLowerCase()]=disp});if(a.dept)DEPT_OF[disp.toLowerCase()]=a.dept}
+const DEPTS=[...new Set([...Object.keys(DEPARTMENTS),...Object.values(AGENTS).map(a=>a.dept).filter(Boolean)])];
+let S={},ALIAS={},NAMES={},ROWS=[],TOT=null;
 function parseCSV(t){t=t.replace(/^\uFEFF/,'');const r=[];let row=[],c='',q=false;
 for(let i=0;i<t.length;i++){const ch=t[i];
 if(q){if(ch=='"'){if(t[i+1]=='"'){c+='"';i++}else q=false}else c+=ch}
@@ -45,56 +110,101 @@ else if(ch=='"')q=true;else if(ch==','){row.push(c);c=''}
 else if(ch=='\n'||ch=='\r'){if(ch=='\r'&&t[i+1]=='\n')i++;row.push(c);c='';if(row.some(x=>x.trim()))r.push(row);row=[]}
 else c+=ch}
 if(c||row.length){row.push(c);if(row.some(x=>x.trim()))r.push(row)}return r}
-function pDate(s){s=(s||'').trim();let m=s.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
-if(m)return{k:`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`,l:`${m[3].padStart(2,'0')}-${m[2].padStart(2,'0')}-${m[1]}`};
-m=s.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
-if(m)return{k:`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`,l:`${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}-${m[3]}`};
-return null}
-function load(text){const rows=parseCSV(text);if(rows.length<2)throw'File is empty';
-const h=rows[0].map(x=>x.trim().toLowerCase());
-const ix=n=>h.findIndex(x=>x.replace(/[_\s]/g,'')==n);
-const ci=ix('createdat'),ai=ix('agentname'),bi=ix('bookingid'),mi=ix('bookingamount');
-if([ci,ai,mi].some(i=>i<0))throw'Missing columns. Need: Created At, Agent Name, Booking Amount';
-const recs=[];let skip=0;
-for(const r of rows.slice(1)){const d=pDate(r[ci]);if(!d){skip++;continue}
-const a=(r[ai]||'').trim()||'(No Agent)';const amt=parseFloat(String(r[mi]).replace(/[^0-9.\-]/g,''))||0;
-recs.push({d,a,amt,id:bi>=0?(r[bi]||'').trim().toUpperCase():''})}
-const dates=[...new Map(recs.map(x=>[x.d.k,x.d])).values()].sort((x,y)=>x.k<y.k?-1:1);
-return{recs,dates,skip,total:rows.length-1,uq:new Set(recs.filter(r=>r.id).map(r=>r.id+'|'+r.a)).size}}
-function agg(ds){const A={};for(const r of ds.recs){const a=A[r.a]??=(A[r.a]={});const e=a[r.d.k]??=[0,0];e[0]++;e[1]+=r.amt}return A}
-const fmt=n=>Number.isInteger(n)?n:(Math.round(n*100)/100);
-const inc=(n,o)=>o==0?null:(n-o)/o;
-const T='border:1px solid #000;padding:3px 10px;text-align:center;font-family:Calibri,Arial,sans-serif;font-size:14px;';
-function ic(v){if(v===null)return`<td style="${T}color:#555">-</td>`;
-const r=Math.round(v*100)/100;
-if(Math.abs(v)<1e-9)return`<td style="${T}color:#ed7d31;background:#fde9d9;font-weight:bold">0.00</td>`;
-if(v<0)return`<td style="${T}color:#c00000;background:#ffc7ce;font-weight:bold">${r.toFixed(2)}</td>`;
-return`<td style="${T}color:#007a33;background:#c6efce;font-weight:bold">${r.toFixed(2)}</td>`}
-function agentTable(name,Ao,An){
-const od=D.old.dates,nd=D.nw.dates,n=Math.max(od.length,nd.length);
-const ao=Ao[name]||{},an=An[name]||{};
-let h=`<table style="border-collapse:collapse"><tr><th colspan="3" style="${T}background:#fbd5b5">Old 7 Day</th><th colspan="3" style="${T}background:#fbd5b5">New 7 Days</th><th style="${T}background:#fff;color:#1f5fa8">BKG increment</th><th style="${T}background:#fff;color:#1f5fa8">Amount Increment</th></tr>`;
-h+=`<tr>`+['Date','Booking','Amount','Date','Booking','Amount'].map(x=>`<th style="${T}background:#b8cce4">${x}</th>`).join('')+`<td style="${T}background:#fff"></td><td style="${T}background:#fff"></td></tr>`;
-let ob=0,oa=0,nb=0,na=0;
-for(let i=0;i<n;i++){const o=od[i],w=nd[i];
-const oe=o?(ao[o.k]||[0,0]):null,ne=w?(an[w.k]||[0,0]):null;
-if(oe){ob+=oe[0];oa+=oe[1]}if(ne){nb+=ne[0];na+=ne[1]}
-const c=v=>`<td style="${T}">${v}</td>`;
-h+=`<tr>${c(o?o.l:'')}${c(oe?oe[0]:'')}${c(oe?fmt(oe[1]):'')}${c(w?w.l:'')}${c(ne?ne[0]:'')}${c(ne?fmt(ne[1]):'')}`+
-(oe&&ne?ic(inc(ne[0],oe[0]))+ic(inc(ne[1],oe[1])):`<td style="${T}"></td><td style="${T}"></td>`)+`</tr>`}
-const g=`background:#c6e0b4;font-weight:bold;`;
-h+=`<tr><td style="${T}${g}">Total</td><td style="${T}${g}">${ob}</td><td style="${T}${g}">${fmt(oa)}</td><td style="${T}${g}">Total</td><td style="${T}${g}">${nb}</td><td style="${T}${g}">${fmt(na)}</td>${ic(inc(nb,ob))}${ic(inc(na,oa))}</tr></table>`;
-return{html:h,ob,oa,nb,na}}
-function summaryTable(rows){
-let h=`<table style="border-collapse:collapse"><tr><th rowspan="2" style="${T}background:#fbd5b5">Agent Name</th><th colspan="2" style="${T}background:#fbd5b5">Old Days Total</th><th colspan="2" style="${T}background:#fbd5b5">New Days Total</th><th style="${T}background:#fff;color:#1f5fa8">BKG increment</th><th style="${T}background:#fff;color:#1f5fa8">Amount Increment</th></tr><tr>`+
-['Booking','Amount','Booking','Amount'].map(x=>`<th style="${T}background:#b8cce4">${x}</th>`).join('')+`<td style="${T}"></td><td style="${T}"></td></tr>`;
-let t=[0,0,0,0];
-for(const r of rows){t[0]+=r.ob;t[1]+=r.oa;t[2]+=r.nb;t[3]+=r.na;
-h+=`<tr><td style="${T}text-align:left">${esc(r.name)}</td><td style="${T}">${r.ob}</td><td style="${T}">${fmt(r.oa)}</td><td style="${T}">${r.nb}</td><td style="${T}">${fmt(r.na)}</td>${ic(inc(r.nb,r.ob))}${ic(inc(r.na,r.oa))}</tr>`}
-const g=`background:#c6e0b4;font-weight:bold;`;
-h+=`<tr><td style="${T}${g}">Total</td><td style="${T}${g}">${t[0]}</td><td style="${T}${g}">${fmt(t[1])}</td><td style="${T}${g}">${t[2]}</td><td style="${T}${g}">${fmt(t[3])}</td>${ic(inc(t[2],t[0]))}${ic(inc(t[3],t[1]))}</tr></table>`;
-return h}
-const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const MN={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12},p2=n=>String(n).padStart(2,'0');
+function pDT(s){s=String(s||'').trim();let y,m,d,x;
+if(x=s.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/)){y=+x[1];m=+x[2];d=+x[3]}
+else if(x=s.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/)){d=+x[1];m=+x[2];y=+x[3]}
+else if(x=s.match(/(\d{1,2})[-\/ ]([A-Za-z]{3,9})(?:[-\/ ,]+(\d{4}))?/)){d=+x[1];m=MN[x[2].slice(0,3).toLowerCase()];y=x[3]?+x[3]:new Date().getFullYear()}
+else return null;
+if(!m||m>12||d>31||d<1)return null;
+const t=s.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?/);let h=null;
+if(t){h=+t[1];if(t[3])h=h%12+(/p/i.test(t[3])?12:0);if(h>23)h=null}
+return{k:`${y}-${p2(m)}-${p2(d)}`,l:`${p2(d)}-${p2(m)}-${y}`,h}}
+const splitAg=s=>String(s||'').split(/,(?![^()]*\))/).map(x=>x.trim()).filter(x=>norm(x));
+function ingest(text,slot){
+const rows=parseCSV(text);if(rows.length<2)throw'File is empty';
+const H=rows[0].map(x=>x.trim().toLowerCase()),f=re=>H.findIndex(x=>re.test(x));
+const iId=f(/booking.?(id|no|number|ref)|^id$/);let iAmt=f(/booking.?amount/);if(iAmt<0)iAmt=f(/^amount$|total.?amount/);
+const iPh=f(/mobile|phone|caller|contact/);const iCr=f(/created.?at/),iDt=f(/^date|date.?time|call.?time|start.?time|^time$|^timestamp/);
+let iSt=f(/^status$|^call.?status$/);if(iSt<0&&(slot=='call'||slot=='in'||slot=='out'))iSt=f(/status/);
+const iDr=f(/direction|call.?type/);let iAg=f(/^agent.?name$/);if(iAg<0)iAg=f(/agent|answered.?by|extension/);
+const dtB=iCr>=0?iCr:iDt,dtC=iDt>=0?iDt:iCr;
+const iIn=f(/intent/);const cand=iIn>=0?[iIn]:H.map((x,i)=>i).filter(i=>/status|type|stage|mode/.test(H[i])&&i!==iAg);
+const doBook=slot=='book'||(slot=='single'&&iIn>=0),doCall=slot=='call'||slot=='in'||slot=='out'||(slot=='single'&&iSt>=0);
+const fail=()=>{throw'Required columns not found. Headers in file: '+rows[0].join(' | ')};
+if(!doBook&&!doCall)fail();
+if(iAg<0)fail();
+if(doBook&&((slot=='book'&&iAmt<0)||dtB<0))fail();
+if(doCall&&(iSt<0||dtC<0))fail();
+const calls=[],books=[];let bad=0,ans=0,noag=0,preN=0,idN=0,noKey=0;const iv=new Set();
+for(const r of rows.slice(1)){
+let idv=iId>=0?(r[iId]||'').trim().toUpperCase():'';const amtRaw=doBook?(r[iAmt]||'').trim():'';
+if(iIn>=0&&iv.size<12)iv.add((r[iIn]||'').trim());const pre=iIn>=0&&/prebook/.test(nz(r[iIn]));if(idv===''&&slot=='single'&&iPh>=0){const p=(r[iPh]||'').replace(/\D/g,'');if(p)idv='PH:'+p}if(pre)preN++;if(pre&&idv==='')noKey++;const isB=doBook&&(slot=='book'||pre),isC=doCall&&(r[iSt]||'').trim()!=='';
+if(!isB&&!isC)continue;
+const ag=splitAg(r[iAg]);
+if(isB){const d=pDT(r[slot=='single'?dtC:dtB]);if(!d)bad++;else if(!ag.length)noag++;
+else books.push({ag,id:idv,amt:parseFloat(amtRaw.replace(/[^0-9.\-]/g,''))||0,dk:d.k,h:d.h,bs:cand.map(i=>r[i]||'')})}
+if(isC){const d=pDT(r[dtC]);if(!d){bad++;continue}
+const a=/^answer/i.test((r[iSt]||'').trim());
+let dir=slot=='in'?'in':slot=='out'?'out':'';
+if(!dir&&iDr>=0){const v=(r[iDr]||'').trim();dir=/^in/i.test(v)?'in':/^out/i.test(v)?'out':''}
+if(!ag.length){noag++;continue}
+if(a)ans++;calls.push({ag,dir,ans:a,dk:d.k,h:d.h})}}
+const info=`${rows.length-1} rows`+(books.length?` · ${books.length} booking rows`:'')+(doCall?` · ${calls.length} call rows (${ans} answered)${iDr<0&&slot=='call'?' · no Direction column':''}`:'')+(slot=='single'?` · Booking Id col: ${iId>=0?rows[0][iId]:'NOT FOUND'} · Call Intent col: ${iIn>=0?rows[0][iIn]:'NOT FOUND'} · pre booking rows: ${preN} · duplicates removed by: ${iId>=0?'Booking Id':iPh>=0?'phone ('+rows[0][iPh]+')':'none'} · pre rows with no ID: ${noKey}`+(iIn>=0&&!preN?` · Call Intent values seen: ${[...iv].join(' / ')}`:''):'')+(slot=='single'&&!doBook?' · bookings NOT counted (need a Call Intent column)':'')+(noag?` · ${noag} without agent (ignored)`:'')+(bad?` · ${bad} skipped (bad date)`:'')+` · agent col: ${rows[0][iAg]}`;
+return{calls,books,info}}
+function parseMap(){const m={};$('map').value.split('\n').forEach(l=>{const p=l.split('=');if(p.length==2){const a=norm(p[0]).toLowerCase(),b=norm(p[1]);if(a&&b)m[a]=b}});return m}
+function agg(per){const A={},seen=new Set(),F=$('ct').value,BF=nz($('bf').value);
+const get=raw=>{const n=norm(raw);if(!n)return null;let k=n.toLowerCase(),nm=n;if(ALIAS[k]){nm=ALIAS[k];k=nm.toLowerCase()}if(!NAMES[k])NAMES[k]=nm;
+return A[k]||(A[k]={k,pres:new Set(),c:0,ci:0,co:0,day:{},b:0,a:0,fc:0,fb:0,h:Array.from({length:24},()=>({c:0,b:0,a:0}))})};
+for(const sk of Object.keys(S).filter(k=>k[0]==per)){
+for(const r of S[sk].calls){const ok=F=='all'||r.dir==F;for(const raw of r.ag){const g=get(raw);if(!g)continue;g.fc=1;g.pres.add(r.dk);const dd=g.day[r.dk]||(g.day[r.dk]={ci:0,co:0,b:0,a:0});if(r.ans&&ok){g.c++;if(r.dir=='in'){g.ci++;dd.ci++}else if(r.dir=='out'){g.co++;dd.co++}if(r.h!=null)g.h[r.h].c++}}}
+for(const r of S[sk].books){if(BF&&!r.bs.some(v=>nz(v).includes(BF)))continue;for(const raw of r.ag){const g=get(raw);if(!g)continue;g.fb=1;g.pres.add(r.dk);g.day[r.dk]||(g.day[r.dk]={ci:0,co:0,b:0,a:0});
+if(r.id){const dk=r.id+'|'+g.k;if(seen.has(dk))continue;seen.add(dk)}
+g.b++;g.a+=r.amt;g.day[r.dk].b++;g.day[r.dk].a+=r.amt;if(r.h!=null){g.h[r.h].b++;g.h[r.h].a+=r.amt}}}}
+return A}
+function days(p){const s=new Set();Object.keys(S).filter(k=>k[0]==p).forEach(k=>{S[k].calls.forEach(r=>s.add(r.dk));S[k].books.forEach(r=>s.add(r.dk))});return[...s].sort()}
+const fD=k=>k.split('-').reverse().join('-');
+function recalc(){
+if(!Object.keys(S).length){$('out').classList.add('hide');return}
+ALIAS={...AGENT_ALIAS,...parseMap()};NAMES={};
+const W=agg('w'),T=agg('t');
+const keys=[...new Set([...Object.keys(W),...Object.keys(T)])].sort((a,b)=>NAMES[a].localeCompare(NAMES[b],undefined,{numeric:true}));
+ROWS=keys.map(k=>{const w=W[k],t=T[k],pd=w?w.pres.size:0,wc=w?w.c:0,wb=w?w.b:0,wa=w?w.a:0;
+return{k,name:NAMES[k],dept:DEPT_OF[k]||DMAP[k]||'Unassigned',pd,wc,wb,wa,wci:w?w.ci:0,wco:w?w.co:0,aci:pd&&w?w.ci/pd:0,aco:pd&&w?w.co/pd:0,tci:t?t.ci:0,tco:t?t.co:0,ac:pd?wc/pd:0,ab:pd?wb/pd:0,aa:pd?wa/pd:0,tc:t?t.c:0,tb:t?t.b:0,ta:t?t.a:0,w,t}});
+TOT={name:'Total',pd:''};for(const f of['wc','wb','wa','ac','ab','aa','tc','tb','ta'])TOT[f]=ROWS.reduce((a,r)=>a+r[f],0);
+const dW=days('w'),dT=days('t'),m=[];
+m.push(`7-day data: ${dW.length} day(s)`+(dW.length?` (${fD(dW[0])} to ${fD(dW[dW.length-1])})`:'')+` · Today data: ${dT.map(fD).join(', ')||'none'}`);
+const BFv=nz($('bf').value);let tb=0,mb=0;Object.values(S).forEach(x=>x.books.forEach(r=>{tb++;if(!BFv||r.bs.some(v=>nz(v).includes(BFv)))mb++}));
+if(tb)m.push(`Booking rows in files: ${tb} · rows with status "${$('bf').value||'any'}": ${mb} (duplicates are removed after this)`+(mb==0?' – NO rows match, check the status text or the status column in your CSV.':''));
+if(dT.length>1)m.push('Warning: the Today files contain more than one date – all of it is counted as today.');
+const anyC=ROWS.some(r=>(r.w&&r.w.fc)||(r.t&&r.t.fc)),anyB=ROWS.some(r=>(r.w&&r.w.fb)||(r.t&&r.t.fb));
+if(anyC&&anyB){const has=(r,f)=>(r.w&&r.w[f])||(r.t&&r.t[f]);
+const co=ROWS.filter(r=>has(r,'fc')&&!has(r,'fb')).map(r=>r.name),bo=ROWS.filter(r=>has(r,'fb')&&!has(r,'fc')).map(r=>r.name);
+if(co.length||bo.length)m.push('Names found only in calls: '+(co.slice(0,10).join(', ')||'-')+'\nNames found only in bookings: '+(bo.slice(0,10).join(', ')||'-')+'\nIf these are the same people, add them in the AGENTS list in the code (or use the mapping box).')}
+$('msg').textContent=m.join('\n');render()}
+const T0='border:1px solid #000;padding:3px 9px;text-align:center;font-family:Calibri,Arial,sans-serif;font-size:14px;';
+const ZF={a:'',w:'background:#ddebf7;',t:'background:#fce4d6;'},HF={a:'background:#d9d9d9;',w:'background:#9dc3e6;',t:'background:#f4b183;',c:'background:#c6e0b4;'},TF={a:'background:#d9d9d9;',w:'background:#bdd7ee;',t:'background:#f8cbad;'};
+function pc(v){if(v===null)return`<td style='${T0}color:#555'>-</td>`;
+if(Math.abs(v)<1e-9)return`<td style='${T0}color:#ed7d31;background:#fff2cc;font-weight:bold'>0.0%</td>`;
+const t=(v>0?'+':'')+(v*100).toFixed(1)+'%';
+return v<0?`<td style='${T0}color:#c00000;background:#ffc7ce;font-weight:bold'>${t}</td>`:`<td style='${T0}color:#007a33;background:#c6efce;font-weight:bold'>${t}</td>`}
+function cols(){const C=[{z:'a',h:'Agent Name',v:r=>r.name},{z:'a',h:'Department',v:r=>r.dept},{z:'w',h:'Present Days',v:r=>r.pd}];
+if($('tot').checked)C.push({z:'w',h:'Total Incoming',v:r=>r.wci},{z:'w',h:'Total Outgoing',v:r=>r.wco},{z:'w',h:'Total Calls',v:r=>r.wc},{z:'w',h:'Total Bookings',v:r=>r.wb},{z:'w',h:'Total Amount',v:r=>r2(r.wa)});
+C.push({z:'w',h:'Avg Incoming/Day',v:r=>r2(r.aci)},{z:'w',h:'Avg Outgoing/Day',v:r=>r2(r.aco)},{z:'w',h:'Avg Calls/Day',v:r=>r2(r.ac)},{z:'w',h:'Avg Booking/Day',v:r=>r2(r.ab)},{z:'w',h:'Avg Amount/Day',v:r=>r2(r.aa)},
+{z:'t',h:'Incoming',v:r=>r.tci},{z:'t',h:'Outgoing',v:r=>r.tco},{z:'t',h:'Answered Calls',v:r=>r.tc},{z:'t',h:'Booking Count',v:r=>r.tb},{z:'t',h:'Amount',v:r=>r2(r.ta)},
+{z:'c',h:'Calls %',p:r=>inc(r.tc,r.ac)},{z:'c',h:'Booking %',p:r=>inc(r.tb,r.ab)},{z:'c',h:'Amount %',p:r=>inc(r.ta,r.aa)});return C}
+const CH=[{z:'a',h:'Hour',v:r=>r.name},{z:'w',h:'Avg Calls/Day',v:r=>r2(r.ac)},{z:'w',h:'Avg Booking/Day',v:r=>r2(r.ab)},{z:'w',h:'Avg Amount/Day',v:r=>r2(r.aa)},
+{z:'t',h:'Answered Calls',v:r=>r2(r.tc)},{z:'t',h:'Booking Count',v:r=>r.tb},{z:'t',h:'Amount',v:r=>r2(r.ta)},
+{z:'c',h:'Calls %',p:r=>inc(r.tc,r.ac)},{z:'c',h:'Booking %',p:r=>inc(r.tb,r.ab)},{z:'c',h:'Amount %',p:r=>inc(r.ta,r.aa)}];
+function tbl(rows,C,tot){
+const nz=z=>C.filter(c=>c.z==z).length,G=[['w','Last 7 Days (average per present day)'],['t','Today'],['c','Today vs 7 Day Avg']].filter(g=>nz(g[0]));
+let h=`<table style='border-collapse:collapse'><tr>${C.filter(c=>c.z=='a').map(c=>`<th rowspan='2' style='${T0}${HF.a}'>${c.h}</th>`).join('')}`+G.map(g=>`<th colspan='${nz(g[0])}' style='${T0}${HF[g[0]]}'>${g[1]}</th>`).join('')+'</tr><tr>'+C.filter(c=>c.z!='a').map(c=>`<th style='${T0}${HF[c.z]}'>${c.h}</th>`).join('')+'</tr>';
+const row=(r,isT)=>'<tr>'+C.map(c=>{if(c.z=='c')return pc(c.p(r));return`<td style='${T0}${c.z=='a'&&!isT?'text-align:left;':''}${isT?TF[c.z]+'font-weight:bold;':ZF[c.z]}'>${esc(c.v(r))}</td>`}).join('')+'</tr>';
+return h+rows.map(r=>row(r,0)).join('')+row(tot,1)+'</table>'}
+function hourData(sel){const ks=sel=='all'?ROWS:[ROWS[+sel]],rs=[];
+for(let h=0;h<24;h++){const o={name:String(h),ac:0,ab:0,aa:0,tc:0,tb:0,ta:0};
+for(const r of ks){if(r.w&&r.pd){o.ac+=r.w.h[h].c/r.pd;o.ab+=r.w.h[h].b/r.pd;o.aa+=r.w.h[h].a/r.pd}if(r.t){o.tc+=r.t.h[h].c;o.tb+=r.t.h[h].b;o.ta+=r.t.h[h].a}}rs.push(o)}
+const tot={name:'Total'};for(const f of['ac','ab','aa','tc','tb','ta'])tot[f]=rs.reduce((a,x)=>a+x[f],0);return{rs,tot}}
 async function copyEl(el,btn){const old=btn.textContent;
 try{await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([el.outerHTML],{type:'text/html'}),'text/plain':new Blob([el.innerText],{type:'text/plain'})})])}
 catch(e){const r=document.createRange();r.selectNode(el);const s=getSelection();s.removeAllRanges();s.addRange(r);document.execCommand('copy');s.removeAllRanges()}
@@ -102,30 +212,30 @@ btn.textContent='Copied ✓';setTimeout(()=>btn.textContent=old,1500)}
 function card(title,html){const d=document.createElement('div');d.className='card';
 d.innerHTML=`<div class="hd"><h3>${esc(title)}</h3><button class="cp">Copy table</button></div><div class="sc">${html}</div>`;
 d.querySelector('.cp').onclick=e=>copyEl(d.querySelector('table'),e.target);return d}
-function render(){if(!D.old||!D.nw)return;
-const msg=[];
-if(D.old.dates.length!=D.nw.dates.length)msg.push(`Warning: Old file has ${D.old.dates.length} days, New file has ${D.nw.dates.length} days. Both should match.`);
-$('msg').textContent=msg.join(' ');
-const Ao=agg(D.old),An=agg(D.nw);
-const names=[...new Set([...Object.keys(Ao),...Object.keys(An)])];
-const res=names.map(n=>({name:n,...agentTable(n,Ao,An)})).sort((a,b)=>b.nb-a.nb||a.name.localeCompare(b.name));
-LAST={Ao,An,res};const ag=$('agents');ag.innerHTML='';res.forEach(r=>ag.appendChild(card(r.name,r.html)));
-const sm=$('summary');sm.innerHTML='';sm.appendChild(card('All Agent Summary',summaryTable(res)));
-$('out').classList.remove('hide')}
-function wire(fid,key,sid,bid){$(fid).onchange=async e=>{const f=e.target.files[0];if(!f)return;
-try{D[key]=load(await f.text());$(sid).textContent=`${f.name} · ${D[key].total} rows · ${D[key].uq} bookings counted (unique Booking Id per agent) · ${D[key].dates.length} days${D[key].skip?' · '+D[key].skip+' skipped (no valid date)':''}`;$(bid).classList.add('ok');render()}
-catch(err){D[key]=null;$(bid).classList.remove('ok');$(sid).textContent='Error';$('msg').textContent=f.name+': '+err}}}
-let LAST;
-const X=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-const colL=i=>String.fromCharCode(65+i);
-function sheetXml(rows,merges,widths){let x='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols>'+widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')+'</cols><sheetData>';
-rows.forEach((r,ri)=>{x+=`<row r="${ri+1}">`;r.forEach((c,ci)=>{if(!c)return;const ref=colL(ci)+(ri+1),v=c[0],s=c[1];
-if(v===null||v==='')x+=`<c r="${ref}" s="${s}"/>`;else if(typeof v==='number')x+=`<c r="${ref}" s="${s}"><v>${v}</v></c>`;else x+=`<c r="${ref}" s="${s}" t="inlineStr"><is><t>${X(v)}</t></is></c>`});x+='</row>'});
-return x+'</sheetData>'+(merges.length?`<mergeCells count="${merges.length}">`+merges.map(m=>`<mergeCell ref="${m}"/>`).join('')+'</mergeCells>':'')+'</worksheet>'}
-const xi=v=>v===null?['-',8]:Math.abs(v)<1e-9?[0,6]:v<0?[v,5]:[v,7];
-const r2=n=>Math.round(n*100)/100;
-const STY='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="6"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFC00000"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFED7D31"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FF007A33"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FF1F5FA8"/><name val="Calibri"/></font></fonts><fills count="8"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>'+['FBD5B5','B8CCE4','C6E0B4','FFC7CE','FDE9D9','C6EFCE'].map(c=>`<fill><patternFill patternType="solid"><fgColor rgb="FF${c}"/></patternFill></fill>`).join('')+'</fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FF000000"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="12">'+
-[[0,0,0,0,0],[1,2,1,0,1],[1,3,1,0,1],[0,0,1,0,1],[1,4,1,0,1],[2,5,1,2,1],[3,6,1,2,1],[4,7,1,2,1],[0,0,1,0,1],[0,0,1,0,0],[5,0,1,0,1],[1,0,0,0,0]].map(([f,fi,b,n,c])=>`<xf numFmtId="${n}" fontId="${f}" fillId="${fi}" borderId="${b}" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="${c?'center':'left'}"/></xf>`).join('')+'</cellXfs></styleSheet>';
+function view(){const d=$('dept').value,rows=d=='all'?ROWS:ROWS.filter(r=>r.dept==d),tot={name:'Total',dept:'',pd:''};
+for(const f of['wc','wb','wa','ac','ab','aa','tc','tb','ta','wci','wco','aci','aco','tci','tco'])tot[f]=rows.reduce((a,r)=>a+r[f],0);return{rows,tot}}
+function render(){const sm=$('sum');sm.innerHTML='';sm.appendChild(card('Agent Summary – Last 7 Days Average vs Today',tbl(view().rows,cols(),view().tot)));
+const sel=$('hag'),cur=sel.value||'all';sel.innerHTML='<option value="all">All Agents</option>'+ROWS.map((r,i)=>`<option value="${i}">${esc(r.name)}</option>`).join('');
+sel.value=[...sel.options].some(o=>o.value==cur)?cur:'all';renderHour();$('out').classList.remove('hide')}
+function renderHour(){const sel=$('hag').value,one=sel!='all'?ROWS[+sel]:null,ks=one?[one]:view().rows,M={};
+for(const r of ks)for(const p of['w','t']){const g=r[p];if(!g)continue;for(const dk in g.day){const key=p+'|'+dk,o=M[key]||(M[key]={p,dk,ci:0,co:0,b:0,a:0}),d=g.day[dk];o.ci+=d.ci;o.co+=d.co;o.b+=d.b;o.a+=d.a}}
+const L=Object.values(M).sort((x,y)=>x.p==y.p?(x.dk<y.dk?-1:1):(x.p=='w'?-1:1));
+const th=t=>`<th style='${T0}${HF.a}'>${t}</th>`,td=(v,st)=>`<td style='${T0}${st||''}'>${esc(v)}</td>`;
+let h=`<table style='border-collapse:collapse'><tr>${['Period','Date','Incoming Answered','Outgoing Answered','Total Answered','Bookings','Amount'].map(th).join('')}</tr>`;
+for(const p of['w','t']){const rs=L.filter(x=>x.p==p);if(!rs.length)continue;const fl=p=='w'?ZF.w:ZF.t,b=(p=='w'?TF.w:TF.t)+'font-weight:bold;',a=[0,0,0,0];
+for(const x of rs){a[0]+=x.ci;a[1]+=x.co;a[2]+=x.b;a[3]+=x.a;h+=`<tr>${td(p=='w'?'Last 7 Days':'Today',fl)}${td(fD(x.dk),fl)}${td(x.ci,fl)}${td(x.co,fl)}${td(x.ci+x.co,fl)}${td(x.b,fl)}${td(r2(x.a),fl)}</tr>`}
+h+=`<tr>${td(rs.length+' day(s)',b)}${td('Total',b)}${td(a[0],b)}${td(a[1],b)}${td(a[0]+a[1],b)}${td(a[2],b)}${td(r2(a[3]),b)}</tr>`;
+if(one&&p=='w'){const n=rs.length;h+=`<tr>${td('Average',b)}${td('per present day',b)}${td(r2(a[0]/n),b)}${td(r2(a[1]/n),b)}${td(r2((a[0]+a[1])/n),b)}${td(r2(a[2]/n),b)}${td(r2(a[3]/n),b)}</tr>`}}
+const hr=$('hr');hr.innerHTML='';hr.appendChild(card('Day-wise Check – '+(one?one.name:'All Agents'),h+'</table>'))}
+/* ---------- Excel ---------- */
+const X=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])),colL=i=>String.fromCharCode(65+i);
+function sheetXml(rows,merges,widths,o){o=o||{};let x='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols>'+widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')+'</cols><sheetData>';
+rows.forEach((r,ri)=>{if(!r)return;x+=`<row r="${ri+1}"${o.hidden&&o.hidden.has(ri+1)?' hidden="1"':''}>`;r.forEach((c,ci)=>{if(!c)return;const ref=colL(ci)+(ri+1),v=c[0],s=c[1],f=c[2];
+if(f)x+=`<c r="${ref}" s="${s}"${typeof v==='string'?' t="str"':''}><f>${X(f)}</f><v>${X(v)}</v></c>`;
+else if(v===null||v==='')x+=`<c r="${ref}" s="${s}"/>`;else if(typeof v==='number')x+=`<c r="${ref}" s="${s}"><v>${v}</v></c>`;else x+=`<c r="${ref}" s="${s}" t="inlineStr"><is><t>${X(v)}</t></is></c>`});x+='</row>'});
+return x+'</sheetData>'+(o.af?`<autoFilter ref="${o.af}">`+(o.fc?`<filterColumn colId="${o.fc.id}"><filters><filter val="${X(o.fc.val)}"/></filters></filterColumn>`:'')+'</autoFilter>':'')+(merges.length?`<mergeCells count="${merges.length}">`+merges.map(m=>`<mergeCell ref="${m}"/>`).join('')+'</mergeCells>':'')+'</worksheet>'}
+const STY='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="5"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFC00000"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFED7D31"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FF007A33"/><name val="Calibri"/></font></fonts><fills count="13"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>'+['D9D9D9','9DC3E6','F4B183','C6E0B4','BDD7EE','F8CBAD','DDEBF7','FCE4D6','FFC7CE','FFF2CC','C6EFCE'].map(c=>`<fill><patternFill patternType="solid"><fgColor rgb="FF${c}"/></patternFill></fill>`).join('')+'</fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FF000000"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="16">'+
+[[0,0,0,0,1],[1,2,1,0,1],[1,3,1,0,1],[1,4,1,0,1],[1,5,1,0,1],[1,6,1,0,1],[1,7,1,0,1],[0,8,1,0,1],[0,9,1,0,1],[2,10,1,10,1],[3,11,1,10,1],[4,12,1,10,1],[0,0,1,0,0],[0,0,1,0,1],[1,0,0,0,0],[1,0,1,10,1]].map(([f,fi,b,n,c])=>`<xf numFmtId="${n}" fontId="${f}" fillId="${fi}" borderId="${b}" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="${c?'center':'left'}"/></xf>`).join('')+'</cellXfs></styleSheet>';
 const CT=new Uint32Array(256).map((_,n)=>{for(let k=0;k<8;k++)n=n&1?0xEDB88320^(n>>>1):n>>>1;return n>>>0});
 const crc=d=>{let c=~0;for(const b of d)c=CT[(c^b)&255]^(c>>>8);return ~c>>>0};
 function zip(files){const e=new TextEncoder(),P=[],C=[];let off=0;
@@ -135,76 +245,46 @@ const c=new DataView(new ArrayBuffer(46));c.setUint32(0,0x02014b50,true);c.setUi
 P.push(new Uint8Array(l.buffer),nm,d);C.push(new Uint8Array(c.buffer),nm);off+=30+nm.length+d.length}
 const cs=C.reduce((a,b)=>a+b.length,0),z=new DataView(new ArrayBuffer(22));z.setUint32(0,0x06054b50,true);z.setUint16(8,files.length,true);z.setUint16(10,files.length,true);z.setUint32(12,cs,true);z.setUint32(16,off,true);
 return new Blob([...P,...C,z.buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})}
-function buildXlsx(){const{Ao,An,res}=LAST,od=D.old.dates,nd=D.nw.dates,n=Math.max(od.length,nd.length),R=[],M=[];
-for(const r of res){const ao=Ao[r.name]||{},an=An[r.name]||{};R.push([[r.name,11]]);const b=R.length+1;M.push(`A${b}:C${b}`,`D${b}:F${b}`);
-R.push([['Old 7 Day',1],['',1],['',1],['New 7 Days',1],['',1],['',1],['BKG increment',10],['Amount Increment',10]]);
-R.push(['Date','Booking','Amount','Date','Booking','Amount'].map(x=>[x,2]));
-let ob=0,oa=0,nb=0,na=0;
-for(let i=0;i<n;i++){const o=od[i],w=nd[i],oe=o?(ao[o.k]||[0,0]):null,ne=w?(an[w.k]||[0,0]):null;
-if(oe){ob+=oe[0];oa+=oe[1]}if(ne){nb+=ne[0];na+=ne[1]}
-const row=[[o?o.l:'',3],[oe?oe[0]:'',3],[oe?r2(oe[1]):'',3],[w?w.l:'',3],[ne?ne[0]:'',3],[ne?r2(ne[1]):'',3]];
-if(oe&&ne)row.push(xi(inc(ne[0],oe[0])),xi(inc(ne[1],oe[1])));else row.push(['',3],['',3]);R.push(row)}
-R.push([['Total',4],[ob,4],[r2(oa),4],['Total',4],[nb,4],[r2(na),4],xi(inc(nb,ob)),xi(inc(na,oa))]);R.push([])}
-const S=[[['Agent Name',1],['Old Days Total',1],['',1],['New Days Total',1],['',1],['BKG increment',10],['Amount Increment',10]],[['',1],...['Booking','Amount','Booking','Amount'].map(x=>[x,2]),['',10],['',10]]];
-let t=[0,0,0,0];
-for(const r of res){t[0]+=r.ob;t[1]+=r.oa;t[2]+=r.nb;t[3]+=r.na;S.push([[r.name,9],[r.ob,3],[r2(r.oa),3],[r.nb,3],[r2(r.na),3],xi(inc(r.nb,r.ob)),xi(inc(r.na,r.oa))])}
-S.push([['Total',4],[t[0],4],[r2(t[1]),4],[t[2],4],[r2(t[3]),4],xi(inc(t[2],t[0])),xi(inc(t[3],t[1]))]);
-const H='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',RN='http://schemas.openxmlformats.org/officeDocument/2006/relationships',PK='http://schemas.openxmlformats.org/package/2006/relationships';
-return zip([
-{n:'[Content_Types].xml',d:H+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'},
-{n:'_rels/.rels',d:H+`<Relationships xmlns="${PK}"><Relationship Id="rId1" Type="${RN}/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
-{n:'xl/workbook.xml',d:H+`<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${RN}"><sheets><sheet name="Per Agent" sheetId="1" r:id="rId1"/><sheet name="Summary" sheetId="2" r:id="rId2"/></sheets></workbook>`},
-{n:'xl/_rels/workbook.xml.rels',d:H+`<Relationships xmlns="${PK}"><Relationship Id="rId1" Type="${RN}/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="${RN}/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="${RN}/styles" Target="styles.xml"/></Relationships>`},
-{n:'xl/styles.xml',d:STY},
-{n:'xl/worksheets/sheet1.xml',d:sheetXml(R,M,[14,10,12,14,10,12,16,18])},
-{n:'xl/worksheets/sheet2.xml',d:sheetXml(S,['A1:A2','B1:C1','D1:E1'],[26,12,14,12,14,16,18])}])}
-$('dl').onclick=()=>{if(!LAST)return;const a=document.createElement('a');a.href=URL.createObjectURL(buildXlsx());a.download='Booking_Comparison.xlsx';document.body.appendChild(a);a.click();a.remove()};
-let MODE='uniq';
-function agg(ds){const A={},seen=new Set();for(const r of ds.recs){if(MODE=='uniq'&&r.id){const k=r.id+'|'+r.a;if(seen.has(k))continue;seen.add(k)}const a=A[r.a]||(A[r.a]={});const e=a[r.d.k]||(a[r.d.k]=[0,0]);e[0]++;e[1]+=r.amt}return A}
-function agentTable(name,Ao,An){
-const od=D.old.dates,nd=D.nw.dates,n=Math.max(od.length,nd.length),ao=Ao[name]||{},an=An[name]||{};
-const c=v=>`<td style='${T}'>${v}</td>`;
-let h=`<table style='border-collapse:collapse'><tr><th colspan='3' style='${T}background:#fbd5b5'>Old 7 Day</th><th colspan='3' style='${T}background:#fbd5b5'>New 7 Days</th><th style='${T}background:#fff;color:#1f5fa8'>BKG increment</th><th style='${T}background:#fff;color:#1f5fa8'>Amount Increment</th></tr><tr>`+['Date','Booking','Amount','Date','Booking','Amount'].map(x=>`<th style='${T}background:#b8cce4'>${x}</th>`).join('')+`<td style='${T}background:#fff'></td><td style='${T}background:#fff'></td></tr>`;
-let ob=0,oa=0,nb=0,na=0,pd=0,pn=0;
-for(let i=0;i<n;i++){const o=od[i],w=nd[i],oe=o?(ao[o.k]||[0,0]):null,ne=w?(an[w.k]||[0,0]):null;
-if(oe){ob+=oe[0];oa+=oe[1];if(oe[0]>0)pd++}if(ne){nb+=ne[0];na+=ne[1];if(ne[0]>0)pn++}
-h+=`<tr>${c(o?o.l:'')}${c(oe?oe[0]:'')}${c(oe?fmt(r2(oe[1])):'')}${c(w?w.l:'')}${c(ne?ne[0]:'')}${c(ne?fmt(r2(ne[1])):'')}`+(oe&&ne?ic(inc(ne[0],oe[0]))+ic(inc(ne[1],oe[1])):c('')+c(''))+`</tr>`}
-const g=`background:#c6e0b4;font-weight:bold;`,g2=`background:#e2efda;font-weight:bold;`,ab=(a,d)=>d?r2(a/d):0;
-const aob=ab(ob,pd),aoa=ab(oa,pd),anb=ab(nb,pn),ana=ab(na,pn);
-const G=(s,v)=>`<td style='${T}${s}'>${v}</td>`;
-h+=`<tr>${G(g,'Total')}${G(g,ob)}${G(g,fmt(r2(oa)))}${G(g,'Total')}${G(g,nb)}${G(g,fmt(r2(na)))}${ic(inc(nb,ob))}${ic(inc(na,oa))}</tr>`;
-h+=`<tr>${G(g2,'Days Present')}${G(g2,pd)}${G(g2,'')}${G(g2,'Days Present')}${G(g2,pn)}${G(g2,'')}${c('')}${c('')}</tr>`;
-h+=`<tr>${G(g2,'Avg / Day')}${G(g2,aob)}${G(g2,aoa)}${G(g2,'Avg / Day')}${G(g2,anb)}${G(g2,ana)}${ic(inc(anb,aob))}${ic(inc(ana,aoa))}</tr></table>`;
-return{html:h,ob,oa,nb,na,pd,pn}}
-function summaryTable(rows){
-const hd=t=>`<th colspan='4' style='${T}background:#fbd5b5'>${t}</th>`,sh=x=>`<th style='${T}background:#b8cce4'>${x}</th>`,ih=x=>`<th rowspan='2' style='${T}background:#fff;color:#1f5fa8'>${x}</th>`;
-let h=`<table style='border-collapse:collapse'><tr><th rowspan='2' style='${T}background:#fbd5b5'>Agent Name</th>${hd('Old Days Total')}${hd('New Days Total')}${ih('BKG increment')}${ih('Amount Increment')}${ih('Avg/Day increment')}</tr><tr>`+['Booking','Amount','Days Present','Avg/Day','Booking','Amount','Days Present','Avg/Day'].map(sh).join('')+`</tr>`;
-const ab=(a,d)=>d?r2(a/d):0,c=v=>`<td style='${T}'>${v}</td>`;let t=[0,0,0,0];
-for(const r of rows){t[0]+=r.ob;t[1]+=r.oa;t[2]+=r.nb;t[3]+=r.na;const ao=ab(r.ob,r.pd),an=ab(r.nb,r.pn);
-h+=`<tr><td style='${T}text-align:left'>${esc(r.name)}</td>${c(r.ob)}${c(fmt(r2(r.oa)))}${c(r.pd)}${c(ao)}${c(r.nb)}${c(fmt(r2(r.na)))}${c(r.pn)}${c(an)}${ic(inc(r.nb,r.ob))}${ic(inc(r.na,r.oa))}${ic(inc(an,ao))}</tr>`}
-const g=`background:#c6e0b4;font-weight:bold;`,G=v=>`<td style='${T}${g}'>${v}</td>`;
-h+=`<tr>${G('Total')}${G(t[0])}${G(fmt(r2(t[1])))}${G('')}${G('')}${G(t[2])}${G(fmt(r2(t[3])))}${G('')}${G('')}${ic(inc(t[2],t[0]))}${ic(inc(t[3],t[1]))}${G('')}</tr></table>`;
-return h}
-function sid(s){s=s||'';return /#fbd5b5/.test(s)?1:/#b8cce4/.test(s)?2:/#c6e0b4|#e2efda/.test(s)?4:/#ffc7ce/.test(s)?5:/#fde9d9/.test(s)?6:/#c6efce/.test(s)?7:/1f5fa8/.test(s)?10:/text-align:left/.test(s)?9:3}
+function sid(s){s=s||'';return/#ffc7ce/.test(s)?9:/#fff2cc/.test(s)?10:/#c6efce/.test(s)?11:/#d9d9d9/.test(s)?1:/#9dc3e6/.test(s)?2:/#f4b183/.test(s)?3:/#c6e0b4/.test(s)?4:/#bdd7ee/.test(s)?5:/#f8cbad/.test(s)?6:/#ddebf7/.test(s)?7:/#fce4d6/.test(s)?8:/text-align:left/.test(s)?12:13}
 function t2s(tbl,rows,merges,r0){const occ={};
 [...tbl.rows].forEach((tr,ri)=>{let ci=0;const R=r0+ri;rows[R]=rows[R]||[];
-[...tr.cells].forEach(td=>{while(occ[R+','+ci])ci++;const cs=td.colSpan,rs=td.rowSpan,s=sid(td.getAttribute('style')),tx=td.textContent.trim(),v=(tx!==''&&!isNaN(tx))?+tx:tx;
+[...tr.cells].forEach(td=>{while(occ[R+','+ci])ci++;const cs=td.colSpan,rs=td.rowSpan,s=sid(td.getAttribute('style')),tx=td.textContent.trim();
+let v=tx;if(tx!==''){if(/%$/.test(tx)&&!isNaN(parseFloat(tx)))v=parseFloat(tx)/100;else if(!isNaN(tx))v=+tx}
 for(let a=0;a<rs;a++)for(let b=0;b<cs;b++){occ[(R+a)+','+(ci+b)]=1;rows[R+a]=rows[R+a]||[];rows[R+a][ci+b]=(a||b)?['',s]:[v,s]}
 if(cs>1||rs>1)merges.push(colL(ci)+(R+1)+':'+colL(ci+cs-1)+(R+rs));ci+=cs})});
 return r0+tbl.rows.length}
-function buildXlsx(){const R=[],M=[],S=[],SM=[];let r0=0;
-document.querySelectorAll('#agents .card').forEach(cd=>{R[r0]=[[cd.querySelector('h3').textContent,11]];r0=t2s(cd.querySelector('table'),R,M,r0+1)+1});
-t2s(document.querySelector('#summary table'),S,SM,0);
+function buildXlsx(){const R1=[],M1=[],tmp=document.createElement('div');
+const V=view(),C=cols(),sel=$('dept').value,L=colL,n=C.length;
+tmp.innerHTML=tbl(ROWS,C,V.tot);t2s(tmp.firstChild,R1,M1,0);
+const tr=R1.length-1;
+C.forEach((c,ci)=>{if(c.z=='a'){R1[1][ci]=R1[0][ci];R1[0][ci]=['',R1[0][ci][1]]}});
+const M=M1.filter(m=>!/^[A-Z]+1:[A-Z]+2$/.test(m));
+const hidden=new Set(),dci=C.findIndex(c=>c.h=='Department');
+if(tr>2){
+ C.forEach((c,ci)=>{if((c.z=='w'||c.z=='t')&&c.h!='Present Days'){R1[tr][ci][2]=`SUBTOTAL(109,${L(ci)}3:${L(ci)}${tr})`}});
+ const idx=h=>C.findIndex(c=>c.h==h&&c.z!='c'),row=tr+1;
+ [['Calls %','Answered Calls','Avg Calls/Day'],['Booking %','Booking Count','Avg Booking/Day'],['Amount %','Amount','Avg Amount/Day']].forEach(([h,t,a])=>{
+  const ci=C.findIndex(c=>c.h==h),ti=idx(t),ai=idx(a);
+  R1[tr][ci]=[R1[tr][ci][0],15,`IF(${L(ai)}${row}=0,"-",(${L(ti)}${row}-${L(ai)}${row})/${L(ai)}${row})`]});
+ if(sel!='all')for(let i=2;i<tr;i++)if(R1[i][dci][0]!==sel)hidden.add(i+1)}
+const opt={af:tr>2?`A2:${L(n-1)}${tr}`:'',fc:sel!='all'?{id:dci,val:sel}:null,hidden};
 const H='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',RN='http://schemas.openxmlformats.org/officeDocument/2006/relationships',PK='http://schemas.openxmlformats.org/package/2006/relationships',WS='application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml';
 return zip([
-{n:'[Content_Types].xml',d:H+`<Types xmlns='http://schemas.openxmlformats.org/package/2006/content-types'><Default Extension='rels' ContentType='application/vnd.openxmlformats-package.relationships+xml'/><Default Extension='xml' ContentType='application/xml'/><Override PartName='/xl/workbook.xml' ContentType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml'/><Override PartName='/xl/worksheets/sheet1.xml' ContentType='${WS}'/><Override PartName='/xl/worksheets/sheet2.xml' ContentType='${WS}'/><Override PartName='/xl/styles.xml' ContentType='application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml'/></Types>`},
+{n:'[Content_Types].xml',d:H+`<Types xmlns='http://schemas.openxmlformats.org/package/2006/content-types'><Default Extension='rels' ContentType='application/vnd.openxmlformats-package.relationships+xml'/><Default Extension='xml' ContentType='application/xml'/><Override PartName='/xl/workbook.xml' ContentType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml'/><Override PartName='/xl/worksheets/sheet1.xml' ContentType='${WS}'/><Override PartName='/xl/styles.xml' ContentType='application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml'/></Types>`},
 {n:'_rels/.rels',d:H+`<Relationships xmlns='${PK}'><Relationship Id='rId1' Type='${RN}/officeDocument' Target='xl/workbook.xml'/></Relationships>`},
-{n:'xl/workbook.xml',d:H+`<workbook xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main' xmlns:r='${RN}'><sheets><sheet name='Per Agent' sheetId='1' r:id='rId1'/><sheet name='Summary' sheetId='2' r:id='rId2'/></sheets></workbook>`},
-{n:'xl/_rels/workbook.xml.rels',d:H+`<Relationships xmlns='${PK}'><Relationship Id='rId1' Type='${RN}/worksheet' Target='worksheets/sheet1.xml'/><Relationship Id='rId2' Type='${RN}/worksheet' Target='worksheets/sheet2.xml'/><Relationship Id='rId3' Type='${RN}/styles' Target='styles.xml'/></Relationships>`},
+{n:'xl/workbook.xml',d:H+`<workbook xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main' xmlns:r='${RN}'><sheets><sheet name='Summary' sheetId='1' r:id='rId1'/></sheets><calcPr fullCalcOnLoad='1'/></workbook>`},
+{n:'xl/_rels/workbook.xml.rels',d:H+`<Relationships xmlns='${PK}'><Relationship Id='rId1' Type='${RN}/worksheet' Target='worksheets/sheet1.xml'/><Relationship Id='rId3' Type='${RN}/styles' Target='styles.xml'/></Relationships>`},
 {n:'xl/styles.xml',d:STY},
-{n:'xl/worksheets/sheet1.xml',d:sheetXml(R,M,[14,10,12,14,10,12,16,18])},
-{n:'xl/worksheets/sheet2.xml',d:sheetXml(S,SM,[26,10,12,13,10,10,12,13,10,16,18,18])}])}
-wire('f1','old','s1','b1');wire('f2','nw','s2','b2');
-document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x==t));
-$('agents').classList.toggle('hide',t.dataset.t!='agents');$('summary').classList.toggle('hide',t.dataset.t!='summary')});
+{n:'xl/worksheets/sheet1.xml',d:sheetXml(R1,M,[22,...C.slice(1).map(()=>14)],opt)}])}
+/* ---------- wiring ---------- */
+const SL=[['in','Incoming Calls CSV'],['out','Outgoing Calls CSV'],['book','Booking CSV']];
+['w','t'].forEach(p=>{const box=$('p'+p);SL.forEach(([s,l])=>{const lb=document.createElement('label');lb.className='fl';lb.innerHTML=`<span>${l}</span><input type='file' accept='.csv'><small>No file</small>`;box.appendChild(lb);
+const inp=lb.querySelector('input'),sm=lb.querySelector('small'),key=p+'_'+s;
+inp.onchange=async()=>{const f=inp.files[0];sm.className='';if(!f){delete S[key];sm.textContent='No file';recalc();return}
+try{S[key]=ingest(await f.text(),s);sm.textContent=f.name+' · '+S[key].info;sm.className='ok'}catch(e){delete S[key];sm.textContent='Error: '+e;sm.className='er'}recalc()}})});
+$('dept').innerHTML='<option value="all">All Departments</option>'+DEPTS.map(d=>`<option>${esc(d)}</option>`).join('')+'<option>Unassigned</option>';
+$('dept').onchange=()=>{if(ROWS.length)render()};
+$('ct').onchange=$('tot').onchange=$('ap').onclick=$('bf').onchange=recalc;$('hag').onchange=renderHour;
+$('dl').onclick=()=>{if(!ROWS.length)return;const a=document.createElement('a');a.href=URL.createObjectURL(buildXlsx());a.download='Agent_Average_vs_Today.xlsx';document.body.appendChild(a);a.click();a.remove()};
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x==t));$('sum').classList.toggle('hide',t.dataset.t!='sum');$('hrw').classList.toggle('hide',t.dataset.t!='hrw')});
 </script></body></html>
